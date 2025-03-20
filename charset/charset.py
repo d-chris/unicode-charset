@@ -1,8 +1,9 @@
+import itertools
 from collections.abc import Generator
 from typing import NamedTuple, Optional
 
 from charset.encoding import all_encodings, valid_encodings
-from charset.unicode import all_unicodes, maxunicode
+from charset.unicode import all_unicodes
 
 
 class CharSet(NamedTuple):
@@ -47,24 +48,19 @@ def charset(
 
     if n and n < 1:
         raise ValueError(f"{n=} must be greater than 0")
-    elif n is None:
-        n = maxunicode
 
-    i = 0
+    def fetch_chars():
+        for char, name in all_unicodes(**kwargs):
+            try:
+                _ = char.encode(encoding)
+            except UnicodeEncodeError:
+                continue
+            except LookupError:
+                break
 
-    for char, name in all_unicodes(**kwargs):
-        try:
-            _ = char.encode(encoding)
-        except UnicodeEncodeError:
-            continue
-        except LookupError:
-            break
+            yield CharSet(encoding, char, name)
 
-        yield CharSet(encoding, char, name)
-
-        i += 1
-        if i >= n:
-            break
+    yield from itertools.islice(fetch_chars(), n)
 
 
 def all_charsets(
