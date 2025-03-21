@@ -69,6 +69,24 @@ def urange(
     yield from range(min, max + 1)
 
 
+def ushuffel(
+    max: Optional[int] = None,
+    min: Optional[int] = None,
+) -> Generator[int, None, None]:
+    """
+    10 times slower as urange and consumes 8.5 MB of memory to hold complete list
+    of sys.maxunicode + 1 integers
+
+    but the best tradeoff between speed and memory usage, 14 times faster then urandom
+    """
+
+    data = list(urange(max, min))
+
+    random.shuffle(data)
+
+    yield from data
+
+
 def all_unicodes(
     names: bool = True,
     random: bool = True,
@@ -90,7 +108,7 @@ def all_unicodes(
     min, max = _assert_args(**kwargs)
 
     if random:
-        unicodes = functools.partial(urandom, max, min)
+        unicodes = functools.partial(ushuffel, max, min)
     else:
         unicodes = functools.partial(urange, max, min)
 

@@ -2,7 +2,7 @@ from sys import maxsize, maxunicode
 
 import pytest
 
-from charset.unicode import _assert_args, all_unicodes, urandom, urange
+from charset.unicode import _assert_args, all_unicodes, urandom, urange, ushuffel
 
 
 @pytest.fixture(
@@ -32,6 +32,27 @@ def test_generators(min, max):
     _range = list(urange(max, min))
 
     assert _random == _range
+
+
+@pytest.mark.parametrize(
+    "func",
+    [
+        urange,
+        ushuffel,
+        urandom,
+    ],
+)
+@pytest.mark.benchmark(group="unicode", warmup=False, min_rounds=1)
+def test_benchmark(benchmark, func):
+
+    kwargs = {
+        "min": 0,
+        "max": maxunicode,
+    }
+
+    result = benchmark(lambda: list(func(**kwargs)))
+
+    assert len(result) == maxunicode + 1
 
 
 def test_assert_false(bad_limits):

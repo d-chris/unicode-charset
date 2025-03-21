@@ -31,6 +31,7 @@ python = "^3.9"
 pytest = "^8.3.5"
 pytest-cov = "^6.0.0"
 pytest-randomly = "^3.16.0"
+pytest-benchmark = "^5.1.0"
 
 [tool.poetry.group.dev.dependencies]
 tox = "^4.24.2"
@@ -41,12 +42,16 @@ profile = "black"
 [tool.pytest.ini_options]
 minversion = "6.0"
 testpaths = [ "tests" ]
-markers = [ "slow: marks tests as slow." ]
+markers = [
+  "slow: marks tests as slow.",
+  "benchmark: marks tests as benchmark.",
+]
 addopts = [
   "--color=yes",
   "--cov=charset",
   "--cov-report=term-missing:skip-covered",
   "--cov-report=xml",
+  "--benchmark-skip",
 ]
 
 [tool.coverage.run]

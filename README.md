@@ -15,22 +15,23 @@ pip install unicode-charset
 ## Usage
 
 ```python
-from charset import charset
+def main():
+    """
+    >>> for c in charset("ansi", n=10,  min=60, random=False):
+    ...     print(c, c.name)
+    ...
+    < LESS-THAN SIGN
+    = EQUALS SIGN
+    > GREATER-THAN SIGN
+    ? QUESTION MARK
+    @ COMMERCIAL AT
+    A LATIN CAPITAL LETTER A
+    B LATIN CAPITAL LETTER B
+    C LATIN CAPITAL LETTER C
+    D LATIN CAPITAL LETTER D
+    E LATIN CAPITAL LETTER E
+    """
 
-# print the first 10 charset of ansi charset
-for c in charset("ansi", n=10, random=False):
-    print(c, c.name)
-```
-
-```cmd
-  SPACE
-! EXCLAMATION MARK
-" QUOTATION MARK
-# NUMBER SIGN
-$ DOLLAR SIGN
-% PERCENT SIGN
-& AMPERSAND
-' APOSTROPHE
-( LEFT PARENTHESIS
-) RIGHT PARENTHESIS
+    for c in charset("ansi", n=10, min=60, random=False):
+        print(c, c.name)
 ```
