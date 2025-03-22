@@ -1,15 +1,18 @@
 import hashlib
-import json
 import re
+from collections.abc import Generator
 from contextlib import contextmanager
 from io import StringIO
+from json import dumps, loads
 from pathlib import Path
-from typing import Any, Dict, Generator, Tuple
+from typing import Any, Optional
 from urllib.request import urlopen
 
 
 @contextmanager
 def open(f: StringIO) -> Generator[StringIO, None, None]:
+    """Context manager to read always from the beginning of a StringIO object."""
+
     pos = f.tell()
 
     try:
@@ -67,7 +70,7 @@ class UnicodeBlocks(StringIO):
                 int(match.group("max"), 16),
             )
 
-    def blocks(self) -> Dict[str, Tuple[int, int]]:
+    def blocks(self) -> dict[str, tuple[int, int]]:
         """Return a dictionary of Unicode Blocks."""
         try:
             return self._blocks
@@ -76,7 +79,7 @@ class UnicodeBlocks(StringIO):
 
         return self._blocks
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Return a dictionary representation of the Unicode Blocks file."""
         return {
             "name": self.name,
@@ -86,18 +89,31 @@ class UnicodeBlocks(StringIO):
             "blocks": self.blocks(),
         }
 
-    def save(self, json_file) -> Path:
+    def save(self, json_file: str, json: bool = True) -> Path:
+        """Save the Unicode Blocks file as JSON or plain text."""
 
         file = Path(json_file)
 
-        file.write_text(json.dumps(self.to_dict(), separators=(",", ":")))
+        if json is True:
+            content = dumps(self.to_dict(), separators=(",", ":")) + "\n"
+        else:
+            content = self.getvalue()
+
+        file.write_text(content, encoding="utf-8")
 
         return Path
 
-    @staticmethod
-    def load(json_file) -> Dict[str, Any]:
+    @classmethod
+    def load(cls, json_file, json: Optional[bool] = None) -> dict[str, Any]:
+        """Load the Unicode Blocks file from JSON or plain text."""
 
-        return json.loads(Path(json_file).read_text("utf-8"))
+        file = Path(json_file)
+        content = file.read_text("utf-8")
+
+        if json is True or (json is None and file.suffix.lower() == ".json"):
+            return loads(content)
+
+        return cls(content).to_dict()
 
 
 def main():
