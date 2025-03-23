@@ -1,5 +1,7 @@
 import hashlib
 import re
+from collections.abc import Generator
+from dataclasses import dataclass, field
 from io import StringIO
 from pathlib import Path
 from typing import Any, Optional
@@ -29,7 +31,16 @@ class BlockTuple(tuple):
         return self._name
 
 
-class UnicodeBlocks(StringIO):
+@dataclass(frozen=True)
+class UnicodeBlocks:
+    name: str
+    date: str
+    url: str
+    sha256: str
+    blocks: frozendict[str, BlockTuple] = field(repr=False)
+
+
+class UnicodeBlockFile(StringIO):
 
     url = "https://www.unicode.org/Public/UCD/latest/ucd/Blocks.txt"
 
@@ -65,7 +76,9 @@ class UnicodeBlocks(StringIO):
 
         return hashlib.new(hash, content).hexdigest(**kwargs)
 
-    def __iter__(self):
+    def __iter__(self) -> Generator[tuple[str, BlockTuple], None, None]:
+        """Iterate over the Unicode Blocks file."""
+
         regex = re.compile(
             r"^(?P<min>[0-9A-F]{3,6})\.\.(?P<max>[0-9A-F]{3,6})\;\s(?P<block>.*?)$",
             re.MULTILINE,
@@ -79,7 +92,7 @@ class UnicodeBlocks(StringIO):
             yield name, BlockTuple(min, max, name)
 
     def blocks(self) -> frozendict[str, BlockTuple]:
-        """Return a dictionary of Unicode Blocks."""
+        """Return a frozen dictionary of Unicode Blocks."""
         try:
             return self._blocks
         except AttributeError:
@@ -87,16 +100,14 @@ class UnicodeBlocks(StringIO):
 
         return self._blocks
 
-    def to_dict(self) -> frozendict[str, Any]:
-        """Return a dictionary representation of the Unicode Blocks file."""
-        return frozendict(
-            {
-                "name": self.name,
-                "date": self.date,
-                "url": self.url,
-                "sha256": self.hexdigest(),
-                "blocks": self.blocks(),
-            }
+    def export(self) -> UnicodeBlocks:
+        """Return a dataclass to representation the Unicode Blocks file."""
+        return UnicodeBlocks(
+            name=self.name,
+            date=self.date,
+            url=self.url,
+            sha256=self.hexdigest(),
+            blocks=self.blocks(),
         )
 
     def save(self, filename: str) -> Path:
@@ -128,4 +139,4 @@ class UnicodeBlocks(StringIO):
         else:
             instance = cls(block_file.read_text("utf-8"))
 
-        return instance.to_dict()
+        return instance.export()
