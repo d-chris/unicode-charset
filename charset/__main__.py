@@ -1,26 +1,11 @@
 import hashlib
 import re
-from collections.abc import Generator
-from contextlib import contextmanager
 from io import StringIO
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 from urllib.request import urlopen
 
 from frozendict import frozendict
-
-
-@contextmanager
-def open(f: StringIO) -> Generator[StringIO, None, None]:
-    """Context manager to read always from the beginning of a StringIO object."""
-
-    pos = f.tell()
-
-    try:
-        f.seek(0)
-        yield f
-    finally:
-        f.seek(pos)
 
 
 class BlockTuple(tuple):
@@ -51,9 +36,10 @@ class UnicodeBlocks(StringIO):
     def __init__(self, blocks_txt: str = "", **kwargs) -> None:
         super().__init__(blocks_txt or self.fetch(), **kwargs)
 
-        with open(self) as f:
-            self._name = f.readline().strip("\n #")
-            self._date = f.readline().split(":", maxsplit=1)[1].strip()
+        self._name = self.readline().strip("\n #")
+        self._date = self.readline().split(":", maxsplit=1)[1].strip()
+
+        self.seek(0)
 
     @classmethod
     def fetch(cls) -> str:
@@ -92,7 +78,7 @@ class UnicodeBlocks(StringIO):
 
             yield name, BlockTuple(min, max, name)
 
-    def blocks(self) -> frozendict[str, tuple[int, int]]:
+    def blocks(self) -> frozendict[str, BlockTuple]:
         """Return a dictionary of Unicode Blocks."""
         try:
             return self._blocks
@@ -114,7 +100,7 @@ class UnicodeBlocks(StringIO):
         )
 
     def save(self, filename: str) -> Path:
-        """Save the Unicode Blocks file as JSON or plain text."""
+        """Save the Unicode Blocks file to plain text."""
 
         file = Path(filename)
 
@@ -125,12 +111,16 @@ class UnicodeBlocks(StringIO):
         return file
 
     @classmethod
-    def load(cls, block_file, strict: bool = False) -> dict[str, Any]:
-        """Load the Unicode Blocks file from JSON or plain text."""
+    def load(
+        cls,
+        block_file: Optional[str] = None,
+        strict: bool = False,
+    ) -> frozendict[str, Any]:
+        """Load the Unicode Blocks file  text file or unicode.org URL."""
 
         try:
             block_file = Path(block_file).resolve(strict=True)
-        except FileNotFoundError as e:
+        except (FileNotFoundError, TypeError) as e:
             if strict:
                 raise e
 
