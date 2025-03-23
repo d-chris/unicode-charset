@@ -1,49 +1,106 @@
+from pathlib import Path
+
 import pytest
+from frozendict import frozendict
 
-from charset.__main__ import UnicodeBlocks
-
-dataset = UnicodeBlocks.load("charset/blocks.txt")["blocks"]
-
-
-@pytest.fixture(params=dataset.keys())
-def name(request):
-    return request.param
+from charset.block import BlockTuple, UnicodeBlockFile, UnicodeBlocks
 
 
-@pytest.fixture(params=[name for name in dataset.keys() if len(name.split()) > 4])
-def words(request):
-    return request.param
+@pytest.fixture
+def blocktuple():
+    return BlockTuple(0, 127, "Basic Latin")
+
+
+@pytest.fixture(scope="session")
+def unicodeblockfile():
+    content = Path("charset/blocks.txt").read_text("utf-8")
+    return UnicodeBlockFile(content)
+
+
+def test_blocktuple_len(blocktuple):
+
+    assert len(blocktuple) == 2
+
+
+def test_blocktuple_unpack(blocktuple):
+
+    min, max = blocktuple
+
+    assert min == blocktuple.min
+    assert max == blocktuple.max
+    assert isinstance(blocktuple.name, str)
+
+
+@pytest.mark.parametrize("attr", ["min", "max", "name"])
+def test_blocktuple_name(blocktuple, attr):
+
+    assert hasattr(blocktuple, attr)
+
+
+def test_unicodeblocks_url():
+
+    assert (
+        UnicodeBlockFile.url
+        == "https://www.unicode.org/Public/UCD/latest/ucd/Blocks.txt"
+    )
+
+
+@pytest.mark.parametrize("attr", ["name", "date"])
+def test_unicodeblockfile_property(unicodeblockfile, attr):
+
+    assert hasattr(unicodeblockfile, attr)
+    assert isinstance(getattr(unicodeblockfile, attr), str)
+
+
+def test_unicodeblockfile_hexdigest(unicodeblockfile):
+
+    assert hasattr(unicodeblockfile, "hexdigest")
+    assert isinstance(unicodeblockfile.hexdigest(), str)
+
+
+def test_unicodeblockfiles_iter(unicodeblockfile):
+
+    _name, _tuple = next(iter(unicodeblockfile))
+
+    assert isinstance(_name, str)
+    assert isinstance(_tuple, BlockTuple)
+
+
+def test_unicodeblocks_block(unicodeblockfile):
+
+    assert isinstance(unicodeblockfile.blocks(), frozendict)
+
+
+def test_unicodeblocks_export(unicodeblockfile):
+
+    assert isinstance(unicodeblockfile.export(), UnicodeBlocks)
+
+
+def test_unicodeblocks_save(unicodeblockfile, tmp_path):
+
+    file = tmp_path / "Blocks.txt"
+
+    unicodeblockfile.save(str(file))
+
+    assert file.read_text("utf-8") == unicodeblockfile.getvalue()
+
+
+def test_unicodeblocks_load():
+    file = "charset/blocks.txt"
+
+    ucd = UnicodeBlockFile.load(file)
+
+    assert isinstance(ucd, UnicodeBlocks)
 
 
 @pytest.mark.parametrize(
-    "func",
+    "error, file",
     [
-        str,
-        str.upper,
-        lambda x: str(x).replace(" ", "_").upper(),
-        lambda x: str(x).replace(" ", "-").upper(),
-    ],
-    ids=[
-        "str",
-        "upper",
-        "replace_underscore",
-        "replace_dash",
+        (FileNotFoundError, "nofile.txt"),
+        (TypeError, None),
     ],
 )
-def test_names(name, func):
+def test_unicodeblocks_load_strict(error, file):
 
-    match = dataset[func(name)]
-
-    assert name == match.name
-
-
-@pytest.mark.parametrize("n", [1, 2])
-def test_words(words, n):
-
-    tokens = words.split()
-
-    search = " ".join(tokens[:n] + tokens[n + 1 :])  # noqa: E203
-
-    match = dataset[search]
-
-    assert words == match.name
+    with pytest.raises(error):
+        UnicodeBlockFile.load(file, strict=True)

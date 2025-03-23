@@ -4,7 +4,7 @@ from collections.abc import Generator
 from dataclasses import dataclass, field
 from io import StringIO
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 from urllib.request import urlopen
 
 from frozendict import frozendict
@@ -126,7 +126,7 @@ class UnicodeBlockFile(StringIO):
         cls,
         block_file: Optional[str] = None,
         strict: bool = False,
-    ) -> frozendict[str, Any]:
+    ) -> UnicodeBlocks:
         """Load the Unicode Blocks file  text file or unicode.org URL."""
 
         try:
