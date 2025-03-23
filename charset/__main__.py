@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 from urllib.request import urlopen
 
-from rapidfuzz import fuzz, process
+from frozendict import frozendict
 
 
 @contextmanager
@@ -42,52 +42,6 @@ class BlockTuple(tuple):
     @property
     def name(self) -> str:
         return self._name
-
-
-class BlocksDict(dict):
-
-    _frozenerror = NotImplementedError("BlocksDict is frozen.")
-
-    def __setitem__(self, key, value):
-        raise self._frozenerror
-
-    def __delitem__(self, key):
-        raise self._frozenerror
-
-    def update(self, *args, **kwargs):
-        raise self._frozenerror
-
-    def clear(self):
-        raise self._frozenerror
-
-    def pop(self, *args, **kwargs):
-        raise self._frozenerror
-
-    def popitem(self):
-        raise self._frozenerror
-
-    def setdefault(self, *args, **kwargs):
-        raise self._frozenerror
-
-    def __getitem__(self, key):
-        try:
-            data = super().__getitem__(key)
-        except KeyError as e:
-            # Try to find a close match
-            matches = process.extractOne(
-                str(key),
-                self.keys(),
-                score_cutoff=0.95,
-                scorer=fuzz.QRatio,
-                processor=str.capitalize,
-            )  # difflib.get_close_matches(str(key), self, n=1, cutoff=0.5)
-
-            if not matches:
-                raise e
-
-            data = super().__getitem__(matches[0])
-
-        return data
 
 
 class UnicodeBlocks(StringIO):
@@ -138,24 +92,26 @@ class UnicodeBlocks(StringIO):
 
             yield name, BlockTuple(min, max, name)
 
-    def blocks(self) -> dict[str, tuple[int, int]]:
+    def blocks(self) -> frozendict[str, tuple[int, int]]:
         """Return a dictionary of Unicode Blocks."""
         try:
             return self._blocks
         except AttributeError:
-            self._blocks = BlocksDict(self)
+            self._blocks = frozendict(self)
 
         return self._blocks
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> frozendict[str, Any]:
         """Return a dictionary representation of the Unicode Blocks file."""
-        return {
-            "name": self.name,
-            "date": self.date,
-            "url": self.url,
-            "sha256": self.hexdigest(),
-            "blocks": self.blocks(),
-        }
+        return frozendict(
+            {
+                "name": self.name,
+                "date": self.date,
+                "url": self.url,
+                "sha256": self.hexdigest(),
+                "blocks": self.blocks(),
+            }
+        )
 
     def save(self, filename: str) -> Path:
         """Save the Unicode Blocks file as JSON or plain text."""
@@ -178,8 +134,8 @@ class UnicodeBlocks(StringIO):
             if strict:
                 raise e
 
-            data = cls()
+            instance = cls()
         else:
-            data = cls(block_file.read_text("utf-8"))
+            instance = cls(block_file.read_text("utf-8"))
 
-        return data.to_dict()
+        return instance.to_dict()
