@@ -130,13 +130,13 @@ class UnicodeBlockFile(StringIO):
         """Load the Unicode Blocks file  text file or unicode.org URL."""
 
         try:
-            block_file = Path(block_file).resolve(strict=True)
+            file = Path(block_file).resolve(strict=True)
         except (FileNotFoundError, TypeError) as e:
             if strict:
                 raise e
 
             instance = cls()
         else:
-            instance = cls(block_file.read_text("utf-8"))
+            instance = cls(file.read_text("utf-8"))
 
         return instance.export()

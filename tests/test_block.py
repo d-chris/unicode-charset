@@ -78,7 +78,7 @@ def test_unicodeblocks_export(unicodeblockfile):
 
 def test_unicodeblocks_save(unicodeblockfile, tmp_path):
 
-    file = tmp_path / "Blocks.txt"
+    file = Path(tmp_path).joinpath("Blocks.txt")
 
     unicodeblockfile.save(str(file))
 
@@ -104,3 +104,11 @@ def test_unicodeblocks_load_strict(error, file):
 
     with pytest.raises(error):
         UnicodeBlockFile.load(file, strict=True)
+
+
+@pytest.mark.slow
+def test_unicodeblocks_load_fetch():
+
+    ucd = UnicodeBlockFile.load()
+
+    assert isinstance(ucd, UnicodeBlocks)

@@ -49,19 +49,18 @@ def test_charset():
 
 def test_wrong_encoding():
 
-    assert list(charset("base64")) == []
+    assert list(charset("base64", random=False)) == []
 
 
-@pytest.mark.slow
 def test_ansi_charset():
 
-    ansi = charset("ansi", random=False, names=False)
+    ansi = charset("ansi", max=0x4000, random=False, names=False)
 
     assert len(list(ansi)) == 256
 
 
 def test_all_charsets():
 
-    gen = all_charsets(n=1)
+    gen = all_charsets(n=1, random=False)
 
     assert isinstance(next(gen), CharSet)
