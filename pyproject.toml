@@ -20,12 +20,14 @@ classifiers = [
 ]
 keywords = [ "charset", "unicode" ]
 packages = [ { include = "charset" } ]
+include = [ "charset/blocks.txt" ]
 
 [tool.poetry.urls]
 repository = "https://github.com/d-chris/unicode-charset"
 
 [tool.poetry.dependencies]
 python = "^3.9"
+rapidfuzz = "^3.12.2"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^8.3.5"

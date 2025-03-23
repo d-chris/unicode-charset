@@ -3,10 +3,11 @@ import re
 from collections.abc import Generator
 from contextlib import contextmanager
 from io import StringIO
-from json import dumps, loads
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 from urllib.request import urlopen
+
+from rapidfuzz import fuzz, process
 
 
 @contextmanager
@@ -20,6 +21,73 @@ def open(f: StringIO) -> Generator[StringIO, None, None]:
         yield f
     finally:
         f.seek(pos)
+
+
+class BlockTuple(tuple):
+    """tuple which behaves like a named tuple with a hidden attribute name."""
+
+    def __new__(cls, min_val: int, max_val: int, name: str):
+        obj = super().__new__(cls, (min_val, max_val))
+        obj._name = name
+        return obj
+
+    @property
+    def min(self) -> int:
+        return self[0]
+
+    @property
+    def max(self) -> int:
+        return self[1]
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+
+class BlocksDict(dict):
+
+    _frozenerror = NotImplementedError("BlocksDict is frozen.")
+
+    def __setitem__(self, key, value):
+        raise self._frozenerror
+
+    def __delitem__(self, key):
+        raise self._frozenerror
+
+    def update(self, *args, **kwargs):
+        raise self._frozenerror
+
+    def clear(self):
+        raise self._frozenerror
+
+    def pop(self, *args, **kwargs):
+        raise self._frozenerror
+
+    def popitem(self):
+        raise self._frozenerror
+
+    def setdefault(self, *args, **kwargs):
+        raise self._frozenerror
+
+    def __getitem__(self, key):
+        try:
+            data = super().__getitem__(key)
+        except KeyError as e:
+            # Try to find a close match
+            matches = process.extractOne(
+                str(key),
+                self.keys(),
+                score_cutoff=0.95,
+                scorer=fuzz.QRatio,
+                processor=str.capitalize,
+            )  # difflib.get_close_matches(str(key), self, n=1, cutoff=0.5)
+
+            if not matches:
+                raise e
+
+            data = super().__getitem__(matches[0])
+
+        return data
 
 
 class UnicodeBlocks(StringIO):
@@ -64,18 +132,18 @@ class UnicodeBlocks(StringIO):
         )
 
         for match in regex.finditer(self.getvalue()):
+            name = match.group("block")
+            min = int(match.group("min"), 16)
+            max = int(match.group("max"), 16)
 
-            yield match.group("block"), (
-                int(match.group("min"), 16),
-                int(match.group("max"), 16),
-            )
+            yield name, BlockTuple(min, max, name)
 
     def blocks(self) -> dict[str, tuple[int, int]]:
         """Return a dictionary of Unicode Blocks."""
         try:
             return self._blocks
         except AttributeError:
-            self._blocks = dict(self)
+            self._blocks = BlocksDict(self)
 
         return self._blocks
 
@@ -89,40 +157,29 @@ class UnicodeBlocks(StringIO):
             "blocks": self.blocks(),
         }
 
-    def save(self, json_file: str, json: bool = True) -> Path:
+    def save(self, filename: str) -> Path:
         """Save the Unicode Blocks file as JSON or plain text."""
 
-        file = Path(json_file)
+        file = Path(filename)
 
-        if json is True:
-            content = dumps(self.to_dict(), separators=(",", ":")) + "\n"
-        else:
-            content = self.getvalue()
+        content = self.getvalue()
 
         file.write_text(content, encoding="utf-8")
 
-        return Path
+        return file
 
     @classmethod
-    def load(cls, json_file, json: Optional[bool] = None) -> dict[str, Any]:
+    def load(cls, block_file, strict: bool = False) -> dict[str, Any]:
         """Load the Unicode Blocks file from JSON or plain text."""
 
-        file = Path(json_file)
-        content = file.read_text("utf-8")
+        try:
+            block_file = Path(block_file).resolve(strict=True)
+        except FileNotFoundError as e:
+            if strict:
+                raise e
 
-        if json is True or (json is None and file.suffix.lower() == ".json"):
-            return loads(content)
+            data = cls()
+        else:
+            data = cls(block_file.read_text("utf-8"))
 
-        return cls(content).to_dict()
-
-
-def main():
-    blocks = UnicodeBlocks()
-
-    blocks.save(
-        Path(__file__).parent.joinpath("blocks.json"),
-    )
-
-
-if __name__ == "__main__":
-    main()
+        return data.to_dict()
